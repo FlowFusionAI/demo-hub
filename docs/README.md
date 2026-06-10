@@ -63,8 +63,8 @@ The hub goes live as soon as the Triage demo page works (target: week 2 of the r
                         │  /screening   JD + CV upload →       │
                         │               ranked shortlist       │  (API routes in-hub,
                         │               (in-hub API routes)    │   OpenAI + pdf parsing)
-                        │  /mcp         embedded demo video +  │
-                        │               architecture + repo ───┼──► github: MCP server repo
+                        │  /agent       flight-recorder trace  │
+                        │               replay + run video ────┼──► github: Floor Manager repo
                         │                                      │
                         │  shared: rate limiter, spend guard,  │
                         │  sample-data loader, "what am I      │
@@ -83,7 +83,7 @@ The hub goes live as soon as the Triage demo page works (target: week 2 of the r
 | `/triage` | Ticket submission form → renders the full LLM classification JSON (category, urgency, confidence, sentiment, summary, draft response, internal notes) as a styled "admin view" | The n8n webhook already returns this JSON. Next to the live result, show static screenshots of the real Slack Block Kit message + Airtable record: "here's what just happened in the systems you can't see" |
 | `/assistant` | Embedded RAG chatbot over a synthetic employee handbook | Suggested-question chips so recruiters know what to ask; a visible **"View eval results"** link showing the golden-set accuracy table (the differentiator — surface it in the demo, not just the README) |
 | `/screening` | Upload a JD + CVs (PDF) → rubric scores, ranked shortlist, evidence quotes | DEFAULT path = preloaded synthetic CVs + sample JD (zero-effort demo). PII notice on upload; uploaded files deleted after session (recruiters may test with real CVs — handling that correctly is itself a signal). Show the redacted "what the model saw" view |
-| `/mcp` | Embedded 2-min video of Claude Desktop operating the live ticket system via MCP | MCP isn't browser-demoable — video is the right format. Page carries architecture diagram + repo link |
+| `/agent` | **Flight recorder**: interactive replay of real logged agent traces (step through thought → tool call → result), plus a 2-min live-run video | Agents are too slow/costly to run live per visitor; trace replay costs zero tokens, never dead-ends, and demonstrates observability thinking. Page carries architecture diagram + repo link. (Was `/mcp` before the Floor Manager merge, 2026-06-10) |
 
 ---
 
@@ -95,7 +95,7 @@ Everything lives in ONE lane: **AI for business operations** (recruitment, onboa
 2. **AI Intake Triage Agent** — *"I add LLM decision-making to business workflows, with confidence gates and HITL"*
 3. **HR Onboarding RAG Assistant** — *"I build AI on business knowledge, and I measure it (published evals)"* — same onboarding domain as the client work
 4. **Applicant Screening Copilot** — *"I added the AI layer to the ATS category I already built for a client"* — closes the loop with project #1
-5. **Business-Ops MCP Server** — *"I expose business systems as agent tools"* — built on top of project #2's Airtable base
+5. **Floor Manager (Ops Agent + MCP Server)** — *"I built an autonomous agent AND the tool layer it runs on"* — a hand-rolled agent loop resolving tickets via a custom MCP server over project #2's Airtable base. The capstone: the agent that runs the floor.
 
 Shared engineering themes deliberately repeated across all of them (interview ammunition for "how do you make LLM output reliable?"): **HITL approval gates · structured outputs validated at two layers · confidence thresholds · published evals · rate limiting/guardrails.**
 

@@ -51,7 +51,7 @@ export const projects: Project[] = [
       "Tickets in, decisions out: LLM classification with a confidence gate. Uncertain tickets go to a human, the rest route themselves.",
     stack: ["n8n", "GPT-4o-mini", "Airtable", "Slack"],
     node: { x: 430, y: 390 },
-    edges: [{ to: "mcp-server", label: "tools" }],
+    edges: [{ to: "floor-manager", label: "operated by" }],
     route: "/triage",
   },
   {
@@ -77,12 +77,12 @@ export const projects: Project[] = [
     shipTarget: "Aug 2026",
   },
   {
-    id: "mcp-server",
-    title: "Business-Ops MCP Server",
+    id: "floor-manager",
+    title: "Floor Manager (Ops Agent + MCP)",
     status: "in-build",
     oneLiner:
-      "The ticket system, exposed as agent tools: Claude triages, summarises, and closes tickets by natural language.",
-    stack: ["TypeScript", "MCP SDK", "Airtable"],
+      "An autonomous agent that resolves tickets end to end: a hand-rolled tool loop over a custom MCP server, with approval gates, bounded budgets, and full decision traces.",
+    stack: ["TypeScript", "MCP SDK", "Agent loop", "Airtable"],
     node: { x: 770, y: 390 },
     edges: [],
     shipTarget: "Sep 2026",
