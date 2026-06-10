@@ -1,0 +1,62 @@
+# STATE — pick up here
+
+> **For any Claude instance:** read `docs/README.md` (hub spec + decisions) and
+> `docs/DESIGN-BRIEF.md` (visual system + extensibility contract) BEFORE
+> touching code. This file tracks what's done and what's next. Update it at
+> the end of every working session.
+
+**Last updated:** 2026-06-10 (session 1 — initial build by Claude Code)
+
+---
+
+## Current status: v1 BUILT, not yet deployed
+
+`npm run build` passes. `npm run dev` to work locally.
+
+### Done (session 1, 2026-06-10)
+
+- [x] Design tokens in `src/app/globals.css` (Tailwind v4 `@theme` — palette, dot grid, stamp, annotation, receipt edge). Light mode only by design.
+- [x] Fonts in `layout.tsx`: Fraunces (display) / Inter (body) / IBM Plex Mono (system labels) / Caveat (hand annotations)
+- [x] `src/data/projects.ts` — THE config contract. 5 projects: ats (client-work), triage (live), rag-assistant + screening + mcp-server (in-build ghosts)
+- [x] `/api/triage` route: per-IP sliding-window rate limit (10/min, verified returns 429), proxies to `N8N_TRIAGE_WEBHOOK_URL` env, **mock classifier fallback** so demo never dies
+- [x] Home page: Nav, Hero (auto-demo types a sample ticket after 4.5s idle; form → packet → receipt sequence), StatusBar (counts derive from config), Floor (desktop SVG canvas with SMIL packet animation + hover spec cards; mobile vertical spine), Operator (portrait + testimonial + CTAs), Footer
+- [x] `/triage` page: sample-ticket chips, submit form, full admin view (confidence-gate callout, draft response, internal notes), spec-sheet sidebar, screenshot placeholder slots
+- [x] Reduced-motion support (motion's `useReducedMotion` + `motion-reduce:hidden` on SMIL packets)
+- [x] **Ghost→live flip verified:** changed rag-assistant to `status:"live"` + `route` → build passed → reverted. The contract works.
+- [x] `next.config.ts`: `turbopack.root` pinned (repo nested under folders with other lockfiles)
+
+### NOT done — next session picks up here (in priority order)
+
+1. **Visual review in a real browser.** The build passes but nobody has *looked* at it yet. Run `npm run dev`, check desktop 1280px + mobile 375px, tune Floor node positions/spacing if cramped, check hero timing feels right. Use the frontend-design skill eye here.
+2. **Real screenshots:** Saurav must export 2 screenshots from the live n8n system → `public/triage-slack.png` (Slack Block Kit message) + `public/triage-airtable.png` (Airtable record). Then replace the `ScreenshotSlot` placeholders in `src/app/triage/page.tsx` with `next/image`.
+3. **Connect the real webhook:** set `N8N_TRIAGE_WEBHOOK_URL` in `.env.local` + Vercel env. The n8n workflow must return the classification JSON in its webhook response (it already does — see career-ops `projects/AI Intake Triage/README.md`). Verify shape matches `TriageResult`.
+4. **OG image:** `src/app/opengraph-image.tsx` with `ImageResponse` — name + tagline over the Floor motif / operator-desk.png. NO generated-image text.
+5. **Deploy:** push to github.com/FlowFusionAI/demo-hub, import to Vercel, set env var. **Saurav buys the custom domain** (only he can) and attaches it.
+6. **Lighthouse:** ≥90 performance / ≥95 accessibility desktop (brief's hard gate). The SMIL animations and font count are the likely suspects if perf misses.
+7. **After deploy:** hub URL replaces `portfolio_url` in career-ops `config/profile.yml` + goes on CV + LinkedIn featured. Loom walkthrough + LinkedIn post (Ship Checklist items in career-ops `projects/README.md`).
+
+### Known judgement calls (don't re-litigate without reason)
+
+- ATS node links OUT to https://portfolio-peach-xi-48.vercel.app for now — an internal case-study page can replace it later.
+- Screening Copilot API routes will live in this app when built (decided; see brief).
+- Repo link in /triage sidebar points to the GitHub profile until the triage repo is public — update it then.
+- Mock classifier is keyword-based on purpose (free, instant, deterministic-ish). Don't replace it with a real LLM call; the real call is the n8n webhook.
+
+### Conventions
+
+- New demo = new entry in `src/data/projects.ts` + route folder + spec sidebar following `/triage`'s two-column pattern.
+- Palette/typography come from `globals.css` tokens only — never hardcode hex values in components.
+- Real metrics only. The status bar numbers trace to the Smile Cliniq engagement.
+- Update THIS file before ending any session.
+
+---
+
+## Session log
+
+| Date | Who | What |
+|---|---|---|
+| 2026-06-10 | Claude Code (career-ops session) | Initial v1 build: all components, API route, config contract, flip verification. Build green, smoke-tested API (classification + 429s) and both pages (200). Not yet visually reviewed or deployed. |
+| 2026-06-10 | Claude Code (same session) | Saurav visually reviewed: approved. Fixes: hover spec cards now z-index above the testimonial annotation (active node z-30); testimonial annotation moved from mid-left to top strip (was colliding with the "same domain" edge label and the ATS hover card) and made pointer-events-none. Removed ALL em dashes from site copy per Saurav's writing rules (use colon/parens/comma/middot instead; en dashes in numeric ranges like 15-20 also normalised to hyphen in copy). Pushed to origin. |
+
+### Writing rule (permanent)
+**No em dashes (—) anywhere in site copy.** Saurav's rule. Use a colon, parentheses, comma/semicolon, or a middot (·) for label separators. Applies to all future copy on this site.
