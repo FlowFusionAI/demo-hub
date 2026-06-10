@@ -17,5 +17,7 @@ This is Saurav KC's recruiter-facing portfolio + live demo site ("The Operations
 - Light mode only; respect `prefers-reduced-motion`
 - Update `docs/STATE.md` before ending a session
 
-The wider career context (CV, job pipeline, project roadmap) lives in the parent
-repo: `c:\Users\saura\Desktop\Professional\career-ops` — see `projects/README.md` there.
+The wider career context (CV, job pipeline, project roadmap) lives in a separate
+repo: `c:\Users\saura\Desktop\Professional\career-ops` — see `projects/README.md`
+and `projects/demo-hub/` there (original spec + design brief; copies live in this
+repo's `docs/`).

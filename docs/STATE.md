@@ -5,12 +5,14 @@
 > touching code. This file tracks what's done and what's next. Update it at
 > the end of every working session.
 
-**Last updated:** 2026-06-10 (session 1 — initial build by Claude Code)
+**Last updated:** 2026-06-10 (session 1 — built, pushed, DEPLOYED)
 
 ---
 
-## Current status: v1 BUILT, not yet deployed
+## Current status: v1 LIVE at https://portfolio.flowfusionai.com
 
+Deployed by Saurav via Vercel (GitHub import, branch `master`, custom subdomain).
+Running in demo-mock mode until `N8N_TRIAGE_WEBHOOK_URL` is set in Vercel env.
 `npm run build` passes. `npm run dev` to work locally.
 
 ### Done (session 1, 2026-06-10)
@@ -27,13 +29,18 @@
 
 ### NOT done — next session picks up here (in priority order)
 
-1. **Visual review in a real browser.** The build passes but nobody has *looked* at it yet. Run `npm run dev`, check desktop 1280px + mobile 375px, tune Floor node positions/spacing if cramped, check hero timing feels right. Use the frontend-design skill eye here.
-2. **Real screenshots:** Saurav must export 2 screenshots from the live n8n system → `public/triage-slack.png` (Slack Block Kit message) + `public/triage-airtable.png` (Airtable record). Then replace the `ScreenshotSlot` placeholders in `src/app/triage/page.tsx` with `next/image`.
-3. **Connect the real webhook:** set `N8N_TRIAGE_WEBHOOK_URL` in `.env.local` + Vercel env. The n8n workflow must return the classification JSON in its webhook response (it already does — see career-ops `projects/AI Intake Triage/README.md`). Verify shape matches `TriageResult`.
-4. **OG image:** `src/app/opengraph-image.tsx` with `ImageResponse` — name + tagline over the Floor motif / operator-desk.png. NO generated-image text.
-5. **Deploy:** push to github.com/FlowFusionAI/demo-hub, import to Vercel, set env var. **Saurav buys the custom domain** (only he can) and attaches it.
-6. **Lighthouse:** ≥90 performance / ≥95 accessibility desktop (brief's hard gate). The SMIL animations and font count are the likely suspects if perf misses.
-7. **After deploy:** hub URL replaces `portfolio_url` in career-ops `config/profile.yml` + goes on CV + LinkedIn featured. Loom walkthrough + LinkedIn post (Ship Checklist items in career-ops `projects/README.md`).
+1. **Real screenshots:** Saurav must export 2 screenshots from the live n8n system → `public/triage-slack.png` (Slack Block Kit message) + `public/triage-airtable.png` (Airtable record). Then replace the `ScreenshotSlot` placeholders in `src/app/triage/page.tsx` with `next/image`.
+2. **Connect the real webhook:** set `N8N_TRIAGE_WEBHOOK_URL` in Vercel env (+ `.env.local` for dev). The n8n workflow must return the classification JSON in its webhook response (it already does — see career-ops `projects/AI Intake Triage/README.md`). Verify shape matches `TriageResult`, then redeploy and confirm the "live pipeline" stamp replaces "demo mode" on /triage.
+3. **OG image:** `src/app/opengraph-image.tsx` with `ImageResponse` — name + tagline over the Floor motif / operator-desk.png. NO generated-image text. Check the share card with an OG preview tool after deploy.
+4. **Lighthouse on the live URL:** ≥90 performance / ≥95 accessibility desktop (brief's hard gate). The SMIL animations and font count are the likely suspects if perf misses.
+5. **Distribution (Ship Checklist items, career-ops `projects/README.md`):** hub URL onto CV + LinkedIn featured section (career-ops `config/profile.yml` already updated to portfolio.flowfusionai.com); Loom walkthrough; LinkedIn launch post.
+6. **Triage repo public:** publish the n8n workflow repo and point the /triage sidebar "repository →" link at it (currently points to the GitHub profile).
+
+### Done since (deployment)
+
+- [x] Pushed to github.com/FlowFusionAI/demo-hub (`master`)
+- [x] Vercel deploy + custom subdomain: **https://portfolio.flowfusionai.com** (Saurav, 2026-06-10)
+- [x] Visual review by Saurav (z-order + annotation fixes applied, em dashes removed)
 
 ### Known judgement calls (don't re-litigate without reason)
 
@@ -57,6 +64,7 @@
 |---|---|---|
 | 2026-06-10 | Claude Code (career-ops session) | Initial v1 build: all components, API route, config contract, flip verification. Build green, smoke-tested API (classification + 429s) and both pages (200). Not yet visually reviewed or deployed. |
 | 2026-06-10 | Claude Code (same session) | Saurav visually reviewed: approved. Fixes: hover spec cards now z-index above the testimonial annotation (active node z-30); testimonial annotation moved from mid-left to top strip (was colliding with the "same domain" edge label and the ATS hover card) and made pointer-events-none. Removed ALL em dashes from site copy per Saurav's writing rules (use colon/parens/comma/middot instead; en dashes in numeric ranges like 15-20 also normalised to hyphen in copy). Pushed to origin. |
+| 2026-06-10 | Saurav + Claude Code | DEPLOYED: Vercel import + custom subdomain https://portfolio.flowfusionai.com (mock mode until webhook env var set). Repo folder moved from `career-ops/demo-hub/` to `C:\Users\saura\Desktop\Personal\Projects\2026\demo-hub\` (source-code convention; Vercel deploys from GitHub so the live site is unaffected). career-ops profile.yml portfolio_url now points at the hub. |
 
 ### Writing rule (permanent)
 **No em dashes (—) anywhere in site copy.** Saurav's rule. Use a colon, parentheses, comma/semicolon, or a middot (·) for label separators. Applies to all future copy on this site.
