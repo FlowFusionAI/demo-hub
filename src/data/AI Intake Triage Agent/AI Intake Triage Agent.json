@@ -1,0 +1,1034 @@
+{
+  "name": "AI Intake Triage Agent",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        -400
+      ],
+      "id": "35a5e13c-a86a-470b-a18a-a059d0f49884",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "a9bb77e3-701e-4c46-a046-1eff381b0c2f",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -128,
+        112
+      ],
+      "id": "4a497ca9-0628-4bed-8c12-57766d274214",
+      "name": "Webhook",
+      "webhookId": "a9bb77e3-701e-4c46-a046-1eff381b0c2f"
+    },
+    {
+      "parameters": {
+        "content": "## Support Ticket Intake",
+        "height": 592,
+        "width": 1892,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        -16
+      ],
+      "id": "b344d165-7755-4cb5-8e13-23dd14ccb824",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=You are a support ticket triage system. Analyze the incoming support request and \nreturn a JSON object with these exact fields. No prose, no markdown — only valid JSON.\n\nSchema:\n{\n  \"category\": \"billing\" | \"technical\" | \"feature_request\" | \"complaint\" | \"onboarding\" | \"other\",\n  \"confidence\": < float 0.0 - 1.0,\n  \"urgency\":  \"critical\" | \"high\" | \"medium\" | \"low\",\n  \"sentiment\": \"frustrated\" | \"neutral\" | \"positive\",\n  \"summary\": \"<one sentence, max 20 words>\",\n  \"draft_response\": \"<professional, empathetic first-response email to the customer, 3-5 sentences>\",\n  \"internal_notes\": \"<bullet points for the agent: what to check, what was implied, any red flags>\"\n}\nConfidence:\n- your certainty about the category and urgency\n\nUrgency rules:\n- critical: service down, data loss, security issue, explicit churn threat\n- high: blocking workflow, no workaround found\n- medium: non-blocking, workaround exists\n- low: general question, feature request, positive feedback"
+            },
+            {
+              "content": "=From.Name: {{ $('Webhook').item.json.body.name }}\nFrom.Email: {{ $('Webhook').item.json.body.email }}\nSubject: {{ $('Webhook').item.json.body.subject }}\nBody: \n{{ $('Webhook').item.json.body.Body }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        544,
+        208
+      ],
+      "id": "f4b6ed25-e7d2-47ed-a2f9-23ad0188e3dc",
+      "name": "Classifier",
+      "credentials": {
+        "openAiApi": {
+          "id": "qjXbaztvYyb6HCiU",
+          "name": "n8n test key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.rateLimits = staticData.rateLimits ?? {};\nconst rateLimits = staticData.rateLimits;\n\nconst now = Date.now();\nconst WINDOW_MS = 60 * 1000;  // 1min\nconst MAX_REQUESTS = 10;\n\nconst headers = $input.first().json.headers;\nconst ip = headers['x-forwarded-for']?.split(',')[0].trim()\n  || headers['x-real-ip']\n  || 'unknown';\n\n// Prune stale entries for ALL IPs on every execution\nfor (const key of Object.keys(rateLimits)) {\n  rateLimits[key] = rateLimits[key].filter(t => now - t < WINDOW_MS);\n  if (rateLimits[key].length === 0) {\n    delete rateLimits[key];\n  }\n}\n\n// Check and update current IP\nconst hits = rateLimits[ip] || [];\n\nif (hits.length >= MAX_REQUESTS) {\n  const retryAfter = Math.ceil((hits[0] + WINDOW_MS - now) / 1000);\n  return [{ json: { rateLimited: true, retryAfter, ip } }];\n}\n\nhits.push(now);\nrateLimits[ip] = hits;\n\nreturn [{ json: { ...($input.first().json), rateLimited: false } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        112
+      ],
+      "id": "de7fc134-ffb6-4fc7-9ccc-8921aa325e26",
+      "name": "Rate Limiter"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"error\": \"rate_limited\", \"retryAfter\": 60 }",
+        "options": {
+          "responseCode": 429,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        608,
+        16
+      ],
+      "id": "89acf2e7-a692-4b26-8014-d3c4c6d506af",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nlet channel_id = '';\nswitch ($input.first().json.output[0].content[0].text.category) {\n  case 'billing':\n    channel_id = 'C0B9BLW2LQJ';\n    return {'id': channel_id}\n  case 'feature_request':\n    channel_id = 'C0B9BLW2LQJ';\n    return {'id': channel_id}\n  case 'complaint':\n    channel_id = 'C0B9BLW2LQJ';\n    return {'id': channel_id}\n  case 'onboarding':\n    channel_id = 'C0B9BLW2LQJ';\n    return {'id': channel_id}\n  case 'other':\n    channel_id = 'C0B9BLW2LQJ';\n    return {'id': channel_id}\n  default:\n    return {'id': channel_id}\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        304
+      ],
+      "id": "0f585f86-7aa4-4f33-be03-edcac8d4ada0",
+      "name": "Get Slack Channel ID"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appe0EHKjHtF3ubE7",
+          "mode": "list",
+          "cachedResultName": "Demos",
+          "cachedResultUrl": "https://airtable.com/appe0EHKjHtF3ubE7"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2R0SBmTlLcko6w",
+          "mode": "list",
+          "cachedResultName": "Tick Triage",
+          "cachedResultUrl": "https://airtable.com/appe0EHKjHtF3ubE7/tbl2R0SBmTlLcko6w"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $('Webhook').item.json.body.email }}",
+            "Name": "={{ $('Webhook').item.json.body.name }}",
+            "Subject": "={{ $('Webhook').item.json.body.subject }}",
+            "Category": "={{ $json.output[0].content[0].text.category }}",
+            "Urgency": "={{ $json.output[0].content[0].text.urgency }}",
+            "Sentiment": "={{ $json.output[0].content[0].text.sentiment }}",
+            "Summary": "={{ $json.output[0].content[0].text.summary }}",
+            "Draft Response": "={{ $json.output[0].content[0].text.draft_response }}",
+            "Internal Notes": "={{ $json.output[0].content[0].text.internal_notes }}",
+            "Body": "={{ $('Webhook').item.json.body.Body }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "TicketID",
+              "displayName": "TicketID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Open",
+                  "value": "Open"
+                },
+                {
+                  "name": "Closed",
+                  "value": "Closed"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Body",
+              "displayName": "Body",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "billing",
+                  "value": "billing"
+                },
+                {
+                  "name": "technical",
+                  "value": "technical"
+                },
+                {
+                  "name": "feature_request",
+                  "value": "feature_request"
+                },
+                {
+                  "name": "complaint",
+                  "value": "complaint"
+                },
+                {
+                  "name": "onboarding",
+                  "value": "onboarding"
+                },
+                {
+                  "name": "other",
+                  "value": "other"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "critical",
+                  "value": "critical"
+                },
+                {
+                  "name": "high",
+                  "value": "high"
+                },
+                {
+                  "name": "medium",
+                  "value": "medium"
+                },
+                {
+                  "name": "low",
+                  "value": "low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Sentiment",
+              "displayName": "Sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Draft Response",
+              "displayName": "Draft Response",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Internal Notes",
+              "displayName": "Internal Notes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        896,
+        144
+      ],
+      "id": "fc5eaa4b-e4e9-4e37-9193-b554acbc9595",
+      "name": "Create a Ticket",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "PoIo1FlhPiypusuv",
+          "name": "Outbound and Demo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appe0EHKjHtF3ubE7",
+          "mode": "list",
+          "cachedResultName": "Demos",
+          "cachedResultUrl": "https://airtable.com/appe0EHKjHtF3ubE7"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2R0SBmTlLcko6w",
+          "mode": "list",
+          "cachedResultName": "AI Intake Triage Agent",
+          "cachedResultUrl": "https://airtable.com/appe0EHKjHtF3ubE7/tbl2R0SBmTlLcko6w"
+        },
+        "filterByFormula": "AND(   OR({Urgency}='critical', {Urgency}='high'),   {Status}='Open',   DATETIME_DIFF(NOW(), {Created}, 'minutes') > 1 )",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        -208
+      ],
+      "id": "774da035-dd7c-4e6f-a236-54e0a40c7af4",
+      "name": "Search records",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "PoIo1FlhPiypusuv",
+          "name": "Outbound and Demo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -128,
+        -208
+      ],
+      "id": "43a01024-85f3-4c66-8d6b-4d4213f22289",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0B9BLW2LQJ",
+          "mode": "list",
+          "cachedResultName": "test1"
+        },
+        "messageType": "block",
+        "blocksUi": "={{ JSON.stringify({ blocks: $json.blocks }) }}",
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        496,
+        -208
+      ],
+      "id": "53a67a84-d9f9-4635-996d-94232823eab8",
+      "name": "Send a message1",
+      "webhookId": "9ef42e99-3d29-402b-afd9-5864c6cbfb75",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "g8voQbQzrWFJct0j",
+          "name": "BoB the builder"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## SLA Breach Notification\n",
+        "height": 416,
+        "width": 820,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        -464
+      ],
+      "id": "e4750f88-e20a-412f-a2cb-712a369bba57",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f3536aa1-a2e8-44ad-973d-2a8e0c64c061",
+              "leftValue": "={{ $('Classifier').item.json.output[0].content[0].text.confidence }}",
+              "rightValue": 0.65,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1328,
+        304
+      ],
+      "id": "b72506b9-37d7-4d1a-a06b-baeda90105ec",
+      "name": "Confidence High?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fcdb7ea5-8f6f-44eb-bb9e-c6afc4b76a00",
+              "leftValue": "={{ $json.rateLimited }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        320,
+        112
+      ],
+      "id": "75fb2fde-f25c-4908-b229-99ffae6f92df",
+      "name": "Limit Reached?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst now = Date.now();\n\nconst rank = { critical: 0, high: 1 };\nconst tickets = items\n  .map(i => i.json)\n  .sort((a, b) => {\n    const u = (rank[a.Urgency] ?? 9) - (rank[b.Urgency] ?? 9);\n    return u !== 0 ? u : new Date(a.Created).getTime() - new Date(b.Created).getTime();\n  });\n\nfunction age(created) {\n  const mins = Math.floor((now - new Date(created).getTime()) / 60000);\n  if (mins < 60) return `${mins}m`;\n  const h = Math.floor(mins / 60), m = mins % 60;\n  if (h < 24) return m ? `${h}h ${m}m` : `${h}h`;\n  const d = Math.floor(h / 24), rh = h % 24;\n  return rh ? `${d}d ${rh}h` : `${d}d`;\n}\n\nconst emoji = { critical: '🔴', high: '🟠' };\nconst crit = tickets.filter(t => t.Urgency === 'critical').length;\nconst high = tickets.filter(t => t.Urgency === 'high').length;\n\n// one compact line per ticket\nconst lines = tickets.map(t =>\n  `${emoji[t.Urgency] || '⚪'} *#${t.TicketID} ${t.Subject}*  ·  ${t.Category}  ·  open ${age(t.Created)}  ·  <mailto:${t.Email}|${t.Name}>`\n);\n\n// split into chunks so no section exceeds Slack's 3000-char limit\nconst chunks = [];\nlet buf = '';\nfor (const line of lines) {\n  if ((buf + '\\n' + line).length > 2900) { chunks.push(buf); buf = line; }\n  else { buf = buf ? buf + '\\n' + line : line; }\n}\nif (buf) chunks.push(buf);\n\nconst blocks = [\n  {\n    type: 'header',\n    text: { type: 'plain_text', text: `🚨 ${tickets.length} urgent ticket${tickets.length === 1 ? '' : 's'} open > 1h`, emoji: true },\n  },\n  {\n    type: 'context',\n    elements: [{ type: 'mrkdwn', text: `${crit} critical · ${high} high · as of <!date^${Math.floor(now / 1000)}^{time}|now>` }],\n  },\n  { type: 'divider' },\n  ...chunks.map(text => ({ type: 'section', text: { type: 'mrkdwn', text } })),\n];\n\nreturn [{ json: { blocks, text: `${tickets.length} urgent tickets open over 1h` } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        -208
+      ],
+      "id": "96bc9c49-94b1-4fec-ba61-048c50620431",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1280,
+        144
+      ],
+      "id": "09ff7e45-8833-4a30-b28b-fb2f56c37d0b",
+      "name": "Respond"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Get Slack Channel ID').item.json.id }}",
+          "mode": "id"
+        },
+        "messageType": "block",
+        "blocksUi": "=[\n  {\n    \"type\": \"header\",\n    \"text\": {\n      \"type\": \"plain_text\",\n      \"text\": \"{{ ({'billing':'💳','technical':'🔧','feature_request':'✨','complaint':'😤','onboarding':'🚀','other':'📋'})[$('Classifier').item.json.output[0].content[0].text.category] ?? '📋' }}  New Support Ticket\",\n      \"emoji\": true\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"fields\": [\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Category*\\n`{{ $('Classifier').item.json.output[0].content[0].text.category }}`\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Urgency*\\n{{ ({'critical':'🔴','high':'🟠','medium':'🟡','low':'🟢'})[$('Classifier').item.json.output[0].content[0].text.urgency] ?? '⚪' }}  {{ $('Classifier').item.json.output[0].content[0].text.urgency }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Sentiment*\\n{{ ({'frustrated':'😤','neutral':'😐','positive':'😊'})[$('Classifier').item.json.output[0].content[0].text.sentiment] ?? '😐' }}  {{ $('Classifier').item.json.output[0].content[0].text.sentiment }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Subject*\\n{{ $json.subject ?? '—' }}\"\n      }\n    ]\n  },\n  {\n    \"type\": \"divider\"\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \":mag: *Summary*\\n{{ $('Classifier').item.json.output[0].content[0].text.summary }}\"\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \":speech_balloon: *Draft Response*\\n_{{ $json.output[0].content[0].text.draft_response }}_\"\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \":notepad_spiral: *Internal Notes*\\n• {{ $json.output[0].content[0].text.internal_notes.join('\\n• ') }}\"\n    }\n  },\n  {\n    \"type\": \"divider\"\n  },\n  {\n    \"type\": \"context\",\n    \"elements\": [\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \":clock1:  Received {{ $now.toFormat('EEE dd MMM yyyy · HH:mm') }} UTC\"\n      }\n    ]\n  }\n]\n",
+        "text": "New Ticket",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1600,
+        208
+      ],
+      "id": "e45d6c1c-9a99-4618-b97b-bafc386dcbcb",
+      "name": "Route & Send to Channel",
+      "webhookId": "595645f4-a66c-4546-88dd-9dcb15dee380",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "g8voQbQzrWFJct0j",
+          "name": "BoB the builder"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0B9BLY3M50",
+          "mode": "list",
+          "cachedResultName": "test2"
+        },
+        "messageType": "block",
+        "blocksUi": "=[\n  {\n    \"type\": \"header\",\n    \"text\": {\n      \"type\": \"plain_text\",\n      \"text\": \"{{ ({'billing':'💳','technical':'🔧','feature_request':'✨','complaint':'😤','onboarding':'🚀','other':'📋'})[$('Classifier').item.json.output[0].content[0].text.category] ?? '📋' }}  New Support Ticket\",\n      \"emoji\": true\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"fields\": [\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Category*\\n`{{ $('Classifier').item.json.output[0].content[0].text.category }}`\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Urgency*\\n{{ ({'critical':'🔴','high':'🟠','medium':'🟡','low':'🟢'})[$('Classifier').item.json.output[0].content[0].text.urgency] ?? '⚪' }}  {{ $('Classifier').item.json.output[0].content[0].text.urgency }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Sentiment*\\n{{ ({'frustrated':'😤','neutral':'😐','positive':'😊'})[$('Classifier').item.json.output[0].content[0].text.sentiment] ?? '😐' }}  {{ $('Classifier').item.json.output[0].content[0].text.sentiment }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Subject*\\n{{ $json.subject ?? '—' }}\"\n      }\n    ]\n  },\n  {\n    \"type\": \"divider\"\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \":mag: *Summary*\\n{{ $('Classifier').item.json.output[0].content[0].text.summary }}\"\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \":speech_balloon: *Draft Response*\\n_{{ $json.output[0].content[0].text.draft_response }}_\"\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \":notepad_spiral: *Internal Notes*\\n• {{ $json.output[0].content[0].text.internal_notes.join('\\n• ') }}\"\n    }\n  },\n  {\n    \"type\": \"divider\"\n  },\n  {\n    \"type\": \"context\",\n    \"elements\": [\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \":clock1:  Received {{ $now.toFormat('EEE dd MMM yyyy · HH:mm') }} UTC\"\n      }\n    ]\n  }\n]\n",
+        "text": "New Ticket",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1600,
+        400
+      ],
+      "id": "8fa38731-34e1-4828-a7a9-7e0e567b23a7",
+      "name": "Needs Human",
+      "webhookId": "595645f4-a66c-4546-88dd-9dcb15dee380",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "g8voQbQzrWFJct0j",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const classifier = $('Classifier').first().json.output[0].content[0].text;\n\nreturn [{\n  json: {\n    category: classifier.category,\n    confidence: classifier.confidence,\n    urgency: classifier.urgency,\n    sentiment: classifier.sentiment,\n    summary: classifier.summary,\n    draft_response: classifier.draft_response,\n    internal_notes: classifier.internal_notes,\n    ticketId: `TICKET-${$input.first().json.fields.TicketID}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        144
+      ],
+      "id": "70c09016-c097-4067-b2e4-e62c3d436950",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {
+    "Classifier": [
+      {
+        "json": {
+          "output": [
+            {
+              "id": "msg_029674a123e4ad29006a285a17941c819eb394558bd950e654",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "annotations": [],
+                  "logprobs": [],
+                  "text": {
+                    "category": "feature_request",
+                    "confidence": 0.85,
+                    "urgency": "medium",
+                    "sentiment": "neutral",
+                    "summary": "Customer requests a feature discussion in a meeting.",
+                    "draft_response": "Hi Saurav, thank you for reaching out. I appreciate your feedback about the missing feature. I would be happy to discuss this further in a meeting. Please let me know your availability, and we can set up a time to chat.",
+                    "internal_notes": [
+                      "Check for existing feature requests related to this topic.",
+                      "Assess if this is a common request among other users.",
+                      "Consider scheduling a meeting at the customer's convenience."
+                    ]
+                  }
+                }
+              ],
+              "role": "assistant"
+            }
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Rate Limiter": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.flowfusionai.com",
+            "user-agent": "PostmanRuntime/7.51.1",
+            "content-length": "274",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate, br",
+            "content-type": "application/json",
+            "postman-token": "081bb585-dd1a-4b3b-91ba-f3174ec76a72",
+            "via": "1.1 Caddy",
+            "x-forwarded-for": "86.20.178.180",
+            "x-forwarded-host": "n8n.flowfusionai.com",
+            "x-forwarded-proto": "https"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "email": "test@example.com",
+            "name": "Test",
+            "subject": "Request",
+            "Body": "Hi there, I noticed that this product does not actually have a feature that I would really like implemented. Is it okay if we quickly chat about out it in a meeting please?"
+          },
+          "webhookUrl": "https://n8n.flowfusionai.com/webhook-test/a9bb77e3-701e-4c46-a046-1eff381b0c2f",
+          "executionMode": "test",
+          "rateLimited": false
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Search records": [
+      {
+        "json": {
+          "id": "recGPRGA2hDocLcQS",
+          "createdTime": "2026-06-09T17:05:25.000Z",
+          "Email": "test@example.com",
+          "Sentiment": "happy",
+          "Urgency": "high",
+          "TicketID": 2,
+          "Status": "Open",
+          "Draft Response": "test response",
+          "Name": "test",
+          "Category": "feature_request",
+          "Subject": "Feature Request",
+          "Internal Notes": "test\n",
+          "Summary": "test",
+          "Created": "2026-06-09T17:05:25.000Z"
+        },
+        "pairedItem": [
+          {
+            "item": 0
+          }
+        ]
+      },
+      {
+        "json": {
+          "id": "recg0DQyc7XRXfJnL",
+          "createdTime": "2026-06-09T17:05:25.000Z",
+          "Email": "test@example.com",
+          "Sentiment": "netural",
+          "Urgency": "critical",
+          "TicketID": 1,
+          "Status": "Open",
+          "Draft Response": "test response",
+          "Name": "test",
+          "Category": "billing",
+          "Subject": "Refund",
+          "Internal Notes": "test\n",
+          "Summary": "test",
+          "Created": "2026-06-09T17:05:25.000Z"
+        },
+        "pairedItem": [
+          {
+            "item": 0
+          }
+        ]
+      },
+      {
+        "json": {
+          "id": "recmsrjHIaNNUUCnP",
+          "createdTime": "2026-06-09T17:05:25.000Z",
+          "Email": "test@example.com",
+          "Sentiment": "sad",
+          "Urgency": "high",
+          "TicketID": 3,
+          "Status": "Open",
+          "Draft Response": "test response",
+          "Name": "test",
+          "Category": "technical",
+          "Subject": "technical issue",
+          "Internal Notes": "test\n",
+          "Summary": "test",
+          "Created": "2026-06-09T17:05:25.000Z"
+        },
+        "pairedItem": [
+          {
+            "item": 0
+          }
+        ]
+      }
+    ],
+    "Create a Ticket": [
+      {
+        "json": {
+          "id": "recWZXt8acnz6iFA9",
+          "createdTime": "2026-06-10T21:40:49.000Z",
+          "fields": {
+            "TicketID": 4,
+            "Created": "2026-06-10T21:40:49.000Z"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.flowfusionai.com",
+            "user-agent": "PostmanRuntime/7.51.1",
+            "content-length": "274",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate, br",
+            "content-type": "application/json",
+            "postman-token": "cea73224-983c-4d1d-b1e5-28a86a7ab3ab",
+            "via": "1.1 Caddy",
+            "x-forwarded-for": "86.20.178.180",
+            "x-forwarded-host": "n8n.flowfusionai.com",
+            "x-forwarded-proto": "https"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "email": "test@example.com",
+            "name": "Test",
+            "subject": "Request",
+            "Body": "Hi there, I noticed that this product does not actually have a feature that I would really like implemented. Is it okay if we quickly chat about out it in a meeting please?"
+          },
+          "webhookUrl": "https://n8n.flowfusionai.com/webhook-test/a9bb77e3-701e-4c46-a046-1eff381b0c2f",
+          "executionMode": "test"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Rate Limiter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limiter": {
+      "main": [
+        [
+          {
+            "node": "Limit Reached?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classifier": {
+      "main": [
+        [
+          {
+            "node": "Get Slack Channel ID",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create a Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Slack Channel ID": {
+      "main": [
+        [
+          {
+            "node": "Confidence High?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a Ticket": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confidence High?": {
+      "main": [
+        [
+          {
+            "node": "Route & Send to Channel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Needs Human",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit Reached?": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b944b71f-f43b-4305-80c8-6791193aedd9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c76905927781624afedefcff74098e89a43444e69bfc5660dd1e8f055cb20947"
+  },
+  "id": "JKB6eSNnJc5xlq8G",
+  "tags": []
+}

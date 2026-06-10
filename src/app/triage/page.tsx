@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { TriageDemo } from "@/components/TriageDemo";
+import { ZoomImage } from "@/components/ZoomImage";
 import { getProject } from "@/data/projects";
 
 export const metadata: Metadata = {
@@ -55,7 +56,12 @@ export default function TriagePage() {
                 monitor alerts on SLA breaches.
               </p>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <ScreenshotSlot label="slack routing · block kit message" />
+                <ZoomImage
+                  src="/triage-slack.png"
+                  alt="Slack Block Kit message showing a classified support ticket routed to the billing channel"
+                  width={800}
+                  height={500}
+                />
                 <ScreenshotSlot label="airtable record · enum-validated" />
               </div>
             </div>

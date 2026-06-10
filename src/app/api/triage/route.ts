@@ -136,6 +136,12 @@ export async function POST(request: NextRequest) {
       });
       if (res.ok) {
         const data = await res.json();
+        if (typeof data.internal_notes === "string") {
+          data.internal_notes = data.internal_notes
+            .split("\n")
+            .map((s: string) => s.replace(/^[-•*]\s*/, "").trim())
+            .filter(Boolean);
+        }
         return NextResponse.json({ ...data, mock: false });
       }
     } catch {
