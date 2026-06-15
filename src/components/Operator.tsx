@@ -47,7 +47,7 @@ export function Operator() {
           </blockquote>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <a
-              href="mailto:sauravkc@flowfusionai.com"
+              href="mailto:sauravkc456@gmail.com"
               className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white transition-transform hover:scale-105"
             >
               Email me →

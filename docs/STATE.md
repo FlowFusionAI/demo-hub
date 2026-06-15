@@ -5,7 +5,7 @@
 > touching code. This file tracks what's done and what's next. Update it at
 > the end of every working session.
 
-**Last updated:** 2026-06-15 (session 3 — safety eval added to /assistant)
+**Last updated:** 2026-06-15 (session 4 · contact email + Hero count fix)
 
 ---
 
@@ -55,6 +55,13 @@ Surfaced the repo's Phase 5 (input guardrail + adversarial safety eval) on the p
 
 **Also this session — site logo.** `src/components/Logo.tsx` (SK monogram styled as a Floor node: rounded badge + amber live-dot, colours via tokens) added to `Nav.tsx`. `src/app/icon.svg` favicon (same mark, literal hex as a standalone asset); removed the stock Next `favicon.ico` so modern browsers use the SVG. Verified the `<link rel="icon" type="image/svg+xml">` tag and that no `favicon.ico` is referenced.
 
+### Done (session 4, 2026-06-15) — contact email + Hero count fix
+
+Small copy/config tweaks from Saurav. No build-affecting logic changed.
+
+- [x] **Contact email updated** to `sauravkc456@gmail.com` on both CTAs: `Nav.tsx` ("Get in touch") and `Operator.tsx` ("Email me"). The flowfusionai address remains only as a non-link domain-naming mention in `docs/README.md`.
+- [x] **Hero annotation de-staled:** `Hero.tsx` margin note was hardcoded "five systems, two live" (stale since `/assistant` shipped → 3 live). Now interpolates the exported `systemCount`/`liveCount` from `projects.ts` (renders "5 systems, 3 live"), so it tracks the StatusBar and can't rot on the next ghost→live flip. Switched spelled-out words → digits to match StatusBar + OG metadata.
+
 ### Assets — resolved this session
 
 - **Walkthrough:** Saurav converted the 21.6 MB video to a GIF in the repo (`rag-workflow-gif.gif`, 1.24 MB, 800×424). Vendored to `public/rag-workflow.gif`. Shown via `WorkflowPlayer.tsx` (CLICK-TO-PLAY, not autoplay) so it respects `prefers-reduced-motion` and stays off the initial page load. No video committed.
@@ -102,6 +109,7 @@ Surfaced the repo's Phase 5 (input guardrail + adversarial safety eval) on the p
 | 2026-06-10 | Claude Code (career-ops session) | Initial v1 build: all components, API route, config contract, flip verification. Build green, smoke-tested API (classification + 429s) and both pages (200). Not yet visually reviewed or deployed. |
 | 2026-06-10 | Claude Code (same session) | Saurav visually reviewed: approved. Fixes: hover spec cards now z-index above the testimonial annotation (active node z-30); testimonial annotation moved from mid-left to top strip (was colliding with the "same domain" edge label and the ATS hover card) and made pointer-events-none. Removed ALL em dashes from site copy per Saurav's writing rules (use colon/parens/comma/middot instead; en dashes in numeric ranges like 15-20 also normalised to hyphen in copy). Pushed to origin. |
 | 2026-06-10 | Saurav + Claude Code | DEPLOYED: Vercel import + custom subdomain https://portfolio.flowfusionai.com (mock mode until webhook env var set). Repo folder moved from `career-ops/demo-hub/` to `C:\Users\saura\Desktop\Personal\Projects\2026\demo-hub\` (source-code convention; Vercel deploys from GitHub so the live site is unaffected). career-ops profile.yml portfolio_url now points at the hub. |
+| 2026-06-15 | Claude Code | Quick copy/config tweaks: contact email → `sauravkc456@gmail.com` on both CTAs (Nav + Operator); Hero margin annotation rewired from hardcoded "five systems, two live" to interpolated `systemCount`/`liveCount` ("5 systems, 3 live") so it can't go stale on the next ghost→live flip. No build logic touched. |
 | 2026-06-15 | Claude Code | Added the safety eval to `/assistant`: reviewed the repo's Phase 5 commit (input guardrail, jailbreak+NSFW, fail-closed + adversarial slice), vendored the adversarial results JSON, built `SafetyEval.tsx`, added the guardrail to the architecture diagram, and wired a `#safety` section + sidebar/methodology/intro updates. Build green, content verified in prerender. Not committed yet. |
 | 2026-06-15 | Claude Code | Shipped `/assistant` (HR Onboarding RAG eval case study). Vendored + mojibake-repaired the live eval JSON, built EvalDashboard + reusable EvalReplay + code-drawn RagArchitecture + CountUp, flipped rag-assistant ghost→live (contract verified: live node, 3-live status bar, home link). Build green, routes 200. Pending from Saurav: walkthrough video embed URL. Flagged a stale Q29-vs-Q24 inconsistency in the source repo's eval-results.md (page follows the JSON). |
 | 2026-06-10 | Claude Code (same session) | Roadmap change: former "Business-Ops MCP Server" project merged with a new autonomous-agent build into **"Floor Manager (Ops Agent + MCP)"** — hand-rolled TS agent loop over a custom MCP server, HITL gates, bounded budgets, decision traces, 20-scenario eval. Floor node renamed (`mcp-server` → `floor-manager`), Triage edge relabelled "operated by", future route is `/agent` (flight-recorder trace replay, not live runs). Spec: career-ops `projects/floor-manager/project-context.md`. docs/README.md updated to match. |

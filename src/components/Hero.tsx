@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { TriageResult } from "@/app/api/triage/route";
+import { liveCount, systemCount } from "@/data/projects";
 import { Stamp } from "./Stamp";
 
 type Phase = "idle" | "sending" | "classified";
@@ -160,7 +161,7 @@ export function Hero() {
               Walk the floor ↓
             </a>
             <span className="annotation -rotate-2">
-              ← five systems, two live
+              ← {systemCount} systems, {liveCount} live
             </span>
           </motion.div>
         </div>
