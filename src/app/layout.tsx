@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Saurav KC · The Operations Floor",
     description:
-      "Live AI automation demos: ticket triage, RAG assistant, applicant screening. 2 systems live, 3 in build.",
+      "Live AI automation demos: ticket triage, RAG assistant, applicant screening. 3 systems live, 2 in build.",
   },
 };
 

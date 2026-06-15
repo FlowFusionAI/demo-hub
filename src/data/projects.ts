@@ -57,13 +57,13 @@ export const projects: Project[] = [
   {
     id: "rag-assistant",
     title: "HR Onboarding Assistant",
-    status: "in-build",
+    status: "live",
     oneLiner:
       "RAG over an employee handbook with a published eval harness: measured answer accuracy, not vibes.",
     stack: ["n8n", "pgvector", "Supabase", "OpenAI"],
     node: { x: 150, y: 390 },
     edges: [],
-    shipTarget: "Jul 2026",
+    route: "/assistant",
   },
   {
     id: "screening",
