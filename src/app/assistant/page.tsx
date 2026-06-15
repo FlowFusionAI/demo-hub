@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { ZoomImage } from "@/components/ZoomImage";
 import { EvalDashboard } from "@/components/EvalDashboard";
 import { EvalReplay } from "@/components/EvalReplay";
+import { SafetyEval } from "@/components/SafetyEval";
 import { RagArchitecture } from "@/components/RagArchitecture";
 import { WorkflowPlayer } from "@/components/WorkflowPlayer";
 import { getProject } from "@/data/projects";
@@ -12,7 +13,7 @@ import { evalResults, liveSummary, REPO_URL } from "@/data/hr-eval";
 export const metadata: Metadata = {
   title: "HR Onboarding RAG Assistant · Eval Case Study | Saurav KC",
   description:
-    "A RAG assistant over an employee handbook, measured against a 30-question golden set: 97% pass, 4.87/5 accuracy and groundedness. Step through every answer, the retrieved chunks, and the LLM judge's scoring.",
+    "A RAG assistant over an employee handbook, measured against a 30-question golden set: 97% pass, 4.87/5 accuracy and groundedness, plus a fail-closed input guardrail scoring 10/10 on an adversarial safety eval. Step through every answer, the retrieved chunks, and the judge's scoring.",
 };
 
 const SUGGESTED_IDS = ["Q01", "Q29", "Q24"];
@@ -46,8 +47,9 @@ export default function AssistantPage() {
             harness. This is a case study, not a live chatbot: instead of a chat
             box you can step through the actual eval run, every grounded answer,
             the chunks the retriever returned, and the judge&apos;s reasoning.
-            Showing the machinery is more honest than a demo that only ever sees
-            happy-path questions.
+            It is also adversarially tested: a fail-closed input guardrail,
+            measured at 10/10 on a safety eval. Showing the machinery is more
+            honest than a demo that only ever sees happy-path questions.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <a
@@ -64,6 +66,12 @@ export default function AssistantPage() {
             >
               Jump to the transcripts
             </a>
+            <a
+              href="#safety"
+              className="rounded-md border border-line bg-card px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
+            >
+              See the safety eval
+            </a>
           </div>
         </div>
 
@@ -75,6 +83,11 @@ export default function AssistantPage() {
         {/* Transcript replay */}
         <div id="transcript" className="mt-14 scroll-mt-20">
           <EvalReplay results={evalResults} suggestedIds={SUGGESTED_IDS} />
+        </div>
+
+        {/* Safety eval */}
+        <div id="safety" className="mt-14 scroll-mt-20">
+          <SafetyEval />
         </div>
 
         {/* Workflow + architecture + spec sidebar */}
@@ -153,7 +166,10 @@ export default function AssistantPage() {
                   the pipeline
                 </dt>
                 <dd className="mt-1 font-mono text-[0.72rem] leading-loose text-ink/80">
-                  embed question
+                  question → guardrail
+                  <br />&nbsp;&nbsp;&nbsp;(jailbreak + nsfw,
+                  <br />&nbsp;&nbsp;&nbsp;fail-closed)
+                  <br />→ embed question
                   <br />→ pgvector cosine search
                   <br />→ top-3 chunks
                   <br />→ prompt (system + chunks + q)
@@ -174,6 +190,18 @@ export default function AssistantPage() {
                   question passes only when both are at least 4 of 5. Splitting
                   the dimensions catches the dangerous case: a correct-sounding
                   answer the model guessed rather than retrieved.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-mono text-[0.62rem] uppercase tracking-widest text-muted">
+                  safety
+                </dt>
+                <dd className="mt-1 leading-relaxed text-ink/85">
+                  A separate adversarial suite (10 cases, 7 attack types) scored
+                  by a binary safety judge: pass means the system refused. A
+                  fail-closed guardrail blocks jailbreak and NSFW input before
+                  any model call. Result: 10/10 safe, 0 breaches, and 0 of the 30
+                  legitimate questions blocked.
                 </dd>
               </div>
               <div>

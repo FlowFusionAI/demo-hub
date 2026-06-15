@@ -5,7 +5,7 @@
 > touching code. This file tracks what's done and what's next. Update it at
 > the end of every working session.
 
-**Last updated:** 2026-06-15 (session 2 — /assistant shipped, build green)
+**Last updated:** 2026-06-15 (session 3 — safety eval added to /assistant)
 
 ---
 
@@ -40,6 +40,20 @@ The HR Onboarding RAG Assistant page: a STATIC case study (not a live chatbot, b
 - [x] **Spec sidebar** reuses the `/triage` "what am i looking at?" clipboard pattern (problem, pipeline, eval methodology, result, stack, repo link).
 - [x] **Config contract:** flipped `rag-assistant` to `status:"live"` + `route:"/assistant"` (removed `shipTarget`) in `src/data/projects.ts`. Floor renders it as a live clickable node, the ATS→rag edge goes solid+animated, StatusBar auto-updated to "3 live", home links to `/assistant`. Verified in the prerendered HTML. Updated the hardcoded OG count in `layout.tsx` (2 live/3 build → 3 live/2 build).
 - [x] `npm run build` green (Next 16, Turbopack); `/assistant` prerenders static; `next start` smoke test: `/`, `/assistant`, `/triage` all 200.
+
+### Done (session 3, 2026-06-15) — safety eval added to `/assistant`
+
+Surfaced the repo's Phase 5 (input guardrail + adversarial safety eval) on the page. All driven by the vendored adversarial JSON.
+
+- [x] **Vendored safety data:** `src/data/hr-eval-safety-results.json` from `eval/adversarial-results-2026-06-15T17-07-59.json` (10 cases, 7 attack types, 10/10 safe, 0 breaches). Run through `scripts/vendor-eval.py` (no mojibake in this file; repair is a no-op but kept for consistency).
+- [x] **`hr-eval.ts` extended:** `SafetyResult` type, `safetyResults`, `safetySummary` (safeRate/safeCount/total), `attackTypeBreakdown` + `ATTACK_TYPE_COUNT`, and `FUNCTIONAL_REGRESSION` constant tracing to `results-2026-06-15T16-52-34.json` (97% / 4.87 / 4.87 unchanged, 0/30 legit questions blocked).
+- [x] **`SafetyEval.tsx`** (server component, uses `CountUp`): 3 headline tiles (100% safe 10/10 · 7 attack types · 0/30 blocked), a "guardrail" + "the finding" explainer pair (the harmful-intent-vs-scope nuance: ADV01 weather-poem injection scored 0.1 and was caught by grounding, not the guardrail), and a native `<details>` accordion of all 10 cases (hostile input, what it tests, system response, safety-judge verdict + reasoning).
+- [x] **`RagArchitecture.tsx`** updated: guardrail node (jailbreak + nsfw, dashed `guard` tone) inserted in the query pipeline with a fail-closed note; eval split into "functional eval" + new "safety eval" (adversarial slice → binary safety judge → safe rate) tracks.
+- [x] **Page wiring:** new `#safety` section between transcript replay and "How it actually runs"; intro + metadata mention the guardrail/10-of-10; sidebar "the pipeline" now starts with the guardrail step; new "safety" methodology entry in the spec sheet; "See the safety eval" jump link added.
+- [x] **Decision:** kept the functional transcript on the 06-14 run (06-15 run is byte-identical in metrics and also mojibake-free; no churn for identical numbers). Functional eval data unchanged.
+- [x] `npm run build` green; safety content confirmed in prerendered HTML; `next start` smoke test: `/`, `/assistant` 200.
+
+**Also this session — site logo.** `src/components/Logo.tsx` (SK monogram styled as a Floor node: rounded badge + amber live-dot, colours via tokens) added to `Nav.tsx`. `src/app/icon.svg` favicon (same mark, literal hex as a standalone asset); removed the stock Next `favicon.ico` so modern browsers use the SVG. Verified the `<link rel="icon" type="image/svg+xml">` tag and that no `favicon.ico` is referenced.
 
 ### Assets — resolved this session
 
@@ -88,6 +102,7 @@ The HR Onboarding RAG Assistant page: a STATIC case study (not a live chatbot, b
 | 2026-06-10 | Claude Code (career-ops session) | Initial v1 build: all components, API route, config contract, flip verification. Build green, smoke-tested API (classification + 429s) and both pages (200). Not yet visually reviewed or deployed. |
 | 2026-06-10 | Claude Code (same session) | Saurav visually reviewed: approved. Fixes: hover spec cards now z-index above the testimonial annotation (active node z-30); testimonial annotation moved from mid-left to top strip (was colliding with the "same domain" edge label and the ATS hover card) and made pointer-events-none. Removed ALL em dashes from site copy per Saurav's writing rules (use colon/parens/comma/middot instead; en dashes in numeric ranges like 15-20 also normalised to hyphen in copy). Pushed to origin. |
 | 2026-06-10 | Saurav + Claude Code | DEPLOYED: Vercel import + custom subdomain https://portfolio.flowfusionai.com (mock mode until webhook env var set). Repo folder moved from `career-ops/demo-hub/` to `C:\Users\saura\Desktop\Personal\Projects\2026\demo-hub\` (source-code convention; Vercel deploys from GitHub so the live site is unaffected). career-ops profile.yml portfolio_url now points at the hub. |
+| 2026-06-15 | Claude Code | Added the safety eval to `/assistant`: reviewed the repo's Phase 5 commit (input guardrail, jailbreak+NSFW, fail-closed + adversarial slice), vendored the adversarial results JSON, built `SafetyEval.tsx`, added the guardrail to the architecture diagram, and wired a `#safety` section + sidebar/methodology/intro updates. Build green, content verified in prerender. Not committed yet. |
 | 2026-06-15 | Claude Code | Shipped `/assistant` (HR Onboarding RAG eval case study). Vendored + mojibake-repaired the live eval JSON, built EvalDashboard + reusable EvalReplay + code-drawn RagArchitecture + CountUp, flipped rag-assistant ghost→live (contract verified: live node, 3-live status bar, home link). Build green, routes 200. Pending from Saurav: walkthrough video embed URL. Flagged a stale Q29-vs-Q24 inconsistency in the source repo's eval-results.md (page follows the JSON). |
 | 2026-06-10 | Claude Code (same session) | Roadmap change: former "Business-Ops MCP Server" project merged with a new autonomous-agent build into **"Floor Manager (Ops Agent + MCP)"** — hand-rolled TS agent loop over a custom MCP server, HITL gates, bounded budgets, decision traces, 20-scenario eval. Floor node renamed (`mcp-server` → `floor-manager`), Triage edge relabelled "operated by", future route is `/agent` (flight-recorder trace replay, not live runs). Spec: career-ops `projects/floor-manager/project-context.md`. docs/README.md updated to match. |
 

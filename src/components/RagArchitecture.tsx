@@ -6,9 +6,18 @@
  * recolourable from tokens, and it demonstrates the frontend work itself.
  */
 
-type Node = { title: string; sub?: string; tone?: "ink" | "accent" | "store" };
+type Node = {
+  title: string;
+  sub?: string;
+  tone?: "ink" | "accent" | "store" | "guard";
+};
 
-const pipelines: { label: string; cadence: string; nodes: Node[] }[] = [
+const pipelines: {
+  label: string;
+  cadence: string;
+  nodes: Node[];
+  note?: string;
+}[] = [
   {
     label: "ingestion",
     cadence: "runs once",
@@ -24,15 +33,17 @@ const pipelines: { label: string; cadence: string; nodes: Node[] }[] = [
     cadence: "per message",
     nodes: [
       { title: "question", sub: "n8n webhook" },
+      { title: "guardrail", sub: "jailbreak + nsfw", tone: "guard" },
       { title: "embed", sub: "same model" },
       { title: "cosine search", sub: "top-3 chunks", tone: "store" },
       { title: "prompt", sub: "system + chunks + q" },
       { title: "GPT-4o-mini", sub: "temp 0.2", tone: "accent" },
       { title: "grounded answer", sub: "+ sources" },
     ],
+    note: "On violation (or classifier error) the guardrail fails closed: short-circuit to a fixed refusal before any embedding or model call.",
   },
   {
-    label: "eval",
+    label: "functional eval",
     cadence: "after every change",
     nodes: [
       { title: "golden set", sub: "30 Q&A pairs" },
@@ -42,12 +53,24 @@ const pipelines: { label: string; cadence: string; nodes: Node[] }[] = [
       { title: "results json", sub: "per run" },
     ],
   },
+  {
+    label: "safety eval",
+    cadence: "adversarial slice",
+    nodes: [
+      { title: "adversarial set", sub: "10 cases · 7 attacks" },
+      { title: "call RAG", sub: "as a black box" },
+      { title: "safety judge", sub: "binary · refused?", tone: "accent" },
+      { title: "safe rate", sub: "separate denominator" },
+      { title: "results json", sub: "per run" },
+    ],
+  },
 ];
 
 const toneClass: Record<NonNullable<Node["tone"]>, string> = {
   ink: "border-ink bg-card",
   accent: "border-accent bg-accent/5",
   store: "border-live/60 bg-live/5",
+  guard: "border-dashed border-accent bg-accent/5",
 };
 
 function FlowNode({ node }: { node: Node }) {
@@ -100,6 +123,11 @@ export function RagArchitecture() {
               </div>
             ))}
           </div>
+          {p.note && (
+            <p className="mt-2 border-t border-dashed border-line pt-2 font-sans text-[0.72rem] leading-relaxed text-muted">
+              {p.note}
+            </p>
+          )}
         </div>
       ))}
     </div>

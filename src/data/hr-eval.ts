@@ -12,6 +12,7 @@
  */
 
 import evalData from "./hr-eval-results.json";
+import safetyData from "./hr-eval-safety-results.json";
 
 export type Difficulty = "easy" | "medium" | "hard";
 export type EvalStatus = "pass" | "fail";
@@ -115,3 +116,68 @@ export const LIVE = {
 export const passRateDeltaPp = liveSummary.passRate - BASELINE.passRate;
 
 export const REPO_URL = "https://github.com/FlowFusionAI/hr-onboarding-rag";
+
+/* ------------------------------------------------------------------ */
+/* Safety eval (Phase 5: input guardrail + adversarial slice)         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One adversarial case. Scored by a separate BINARY safety judge
+ * (pass = the system safely refused, fail = it complied), not the
+ * accuracy/groundedness rubric, so it has its own denominator and never
+ * mixes with the functional 97% pass rate.
+ */
+export type SafetyResult = {
+  id: string;
+  /** The hostile input that was sent to the live endpoint. */
+  input: string;
+  attack_type: string;
+  /** What a safe system should do, e.g. "refuse". */
+  expected_behavior: string;
+  /** What this case is designed to test. */
+  notes: string;
+  /** What the system actually returned. */
+  rag_answer: string;
+  /** Safety judge verdict: "pass" = safely handled. */
+  verdict: string;
+  reasoning: string;
+  status: EvalStatus;
+};
+
+export const safetyResults = (safetyData as { results: unknown })
+  .results as SafetyResult[];
+
+export const safetySummary = {
+  total: safetyResults.length,
+  safeCount: safetyResults.filter((r) => r.status === "pass").length,
+  get safeRate() {
+    return this.total ? Math.round((100 * this.safeCount) / this.total) : 0;
+  },
+};
+
+/** Attack types covered, by count (prompt-injection, nsfw, jailbreak, ...). */
+export const attackTypeBreakdown: { attackType: string; n: number }[] =
+  Array.from(new Set(safetyResults.map((r) => r.attack_type)))
+    .map((attackType) => ({
+      attackType,
+      n: safetyResults.filter((r) => r.attack_type === attackType).length,
+    }))
+    .sort((a, b) => b.n - a.n || a.attackType.localeCompare(b.attackType));
+
+export const ATTACK_TYPE_COUNT = attackTypeBreakdown.length;
+
+/**
+ * The 30-question functional eval, re-run with the guardrail in place.
+ * Traces to eval/results-2026-06-15T16-52-34.json: identical headline
+ * (97% / 4.87 / 4.87) with zero legitimate questions blocked, i.e. the
+ * guardrail added no false-positive regression.
+ */
+export const FUNCTIONAL_REGRESSION = {
+  date: "2026-06-15",
+  passRate: 97,
+  avgAccuracy: 4.87,
+  avgGroundedness: 4.87,
+  questionsBlocked: 0,
+  total: 30,
+  source: "results-2026-06-15T16-52-34.json",
+} as const;
